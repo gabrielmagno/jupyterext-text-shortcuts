@@ -1,5 +1,5 @@
 import { get } from "lodash/fp";
-import CodeMirror from "codemirror";
+import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import {
     JupyterFrontEnd,
     JupyterFrontEndPlugin,
@@ -7,7 +7,7 @@ import {
 import { INotebookTracker } from "@jupyterlab/notebook";
 import { getPaddedTextToInsert } from "./utils";
 
-const PLUGIN_ID = "@techrah/text-shortcuts:plugin";
+const PLUGIN_ID = "text-shortcuts:plugin";
 
 const insertText = (tracker: INotebookTracker) => (args: any) => {
     const widget = tracker.currentWidget;
@@ -17,13 +17,12 @@ const insertText = (tracker: INotebookTracker) => (args: any) => {
     const kernel = get("sessionContext.session.kernel", widget);
     if (args.kernel && kernel.name !== args.kernel) return;
 
-    const doc = get("content.activeCell.editor.doc", widget) as CodeMirror.Doc;
-    if (!doc) return;
+    const active_editor = get("content.activeCell.editor", widget) as CodeMirrorEditor;
 
     const { text, autoPad } = args;
-    const insertionText = autoPad ? getPaddedTextToInsert(doc, text) : text;
+    const insertionText = autoPad ? getPaddedTextToInsert(active_editor, text) : text;
 
-    doc.replaceSelection(insertionText);
+    active_editor.replaceSelection(insertionText);
 };
 
 const handleActivation = (app: JupyterFrontEnd, tracker: INotebookTracker) => {

@@ -1,13 +1,14 @@
 import { isEqual, pick } from "lodash/fp";
-import CodeMirror from "codemirror";
+import { CodeMirrorEditor } from '@jupyterlab/codemirror';
+import { CodeEditor } from '@jupyterlab/codeeditor';
 
 const getPaddingText = (
-    pos1: CodeMirror.Position,
-    pos2: CodeMirror.Position,
-    lastPos: CodeMirror.Position,
+    pos1: CodeEditor.IPosition,
+    pos2: CodeEditor.IPosition,
+    lastPos: CodeEditor.IPosition,
     ch: string
 ): string => {
-    const pickPos = pick(["line", "ch"]);
+    const pickPos = pick(["line", "column"]);
 
     // End of line
     if (isEqual(pickPos(pos2), pickPos(lastPos))) return " ";
@@ -23,28 +24,40 @@ const getPaddingText = (
 };
 
 export const getPaddedTextToInsert = (
-    doc: CodeMirror.Doc,
+    editor: CodeMirrorEditor,
     textToInsert: string
 ): string => {
-    const _doc = doc.copy(false);
 
-    const from = _doc.getCursor("from");
-    const to = _doc.getCursor("to");
-
-    _doc.extendSelection(
-        { ...from, ch: from.ch - 1 },
-        { ...to, ch: to.ch + 1 }
-    );
-
-    const extSelectedText = _doc.getSelection();
-    const extFrom = _doc.getCursor("from");
-    const extTo = _doc.getCursor("to");
-
-    const lastLine = _doc.lastLine();
-    const lastPos: CodeMirror.Position = {
-        line: lastLine,
-        ch: _doc.getLine(lastLine).length,
+    const lastLineIndex = editor.lastLine();
+    const lastLine = editor.getLine(lastLineIndex);
+    const lastLineSize = lastLine ? lastLine.length : 0;
+    const lastPos: CodeEditor.IPosition = {
+        line: lastLineIndex,
+        column: lastLineSize,
     };
+    const firstPos: CodeEditor.IPosition = {
+        line: 0,
+        column: 0,
+    };
+
+    const selection = editor.getSelection();
+    const from = selection.start;
+    const to = selection.end;
+
+    let extFrom = from;
+    if (from.line != firstPos.line || from.column != firstPos.column) {
+        extFrom = {line: from.line, column: from.column - 1};
+    }
+
+    let extTo = to
+    if (to.line != lastPos.line || to.column != lastPos.column) {
+        extTo = {line: from.line, column: from.column + 1};
+    }
+
+    const extSelectedText = editor.getRange(
+        {line: extFrom.line, ch: extFrom.column},
+        {line: extTo.line, ch: extTo.column},
+    );
 
     const leftCh = getPaddingText(
         from,
